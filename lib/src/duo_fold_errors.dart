@@ -1,7 +1,7 @@
 /// Thrown when the effect cannot run on the current platform or renderer.
 ///
 /// The effect is built on `ui.ImageFilter.shader`, which only exists on the
-/// Impeller backend. Rather than degrade to an unfiltered child, a silent
+/// Impeller backend. Rather than degrade to an unfiltered child or a silent
 /// no-op that reads as "the package is broken", duo_animation fails loudly.
 class DuoFoldUnsupportedError implements Exception {
   /// Creates an error explaining why the effect cannot run.

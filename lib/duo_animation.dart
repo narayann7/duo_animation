@@ -5,3 +5,4 @@
 library;
 
 export 'src/duo_fold_errors.dart';
+export 'src/duo_fold_parameters.dart';
