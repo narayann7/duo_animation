@@ -22,7 +22,8 @@ abstract final class Matrix3 {
     final out = List<double>.filled(9, 0);
     for (var row = 0; row < 3; row++) {
       for (var col = 0; col < 3; col++) {
-        out[row * 3 + col] = a[row * 3] * b[col] +
+        out[row * 3 + col] =
+            a[row * 3] * b[col] +
             a[row * 3 + 1] * b[3 + col] +
             a[row * 3 + 2] * b[6 + col];
       }
@@ -52,13 +53,14 @@ abstract final class Matrix3 {
   }
 
   /// Folds [radians] into the principal range, minus pi to pi.
+  ///
+  /// Dart's `%` on doubles always returns a non-negative remainder for a
+  /// positive divisor, so a single correction above pi is enough; the result
+  /// can never land below minus pi.
   static double wrapAngle(double radians) {
     var x = radians % (2 * math.pi);
     if (x > math.pi) {
       x -= 2 * math.pi;
-    }
-    if (x < -math.pi) {
-      x += 2 * math.pi;
     }
     return x;
   }
