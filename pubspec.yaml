@@ -1,7 +1,7 @@
 name: duo_animation
 description: iPhone Duo style tilt-driven frosted-glass fold effect for any Flutter widget subtree.
 version: 0.1.0
-repository: https://github.com/keeptinkering/duo_animation
+repository: https://github.com/narayann7/duo_animation
 
 environment:
   sdk: ^3.12.0

@@ -27,7 +27,7 @@ void main() {
   });
 
   group('packUniforms', () {
-    test('emits the five floats in shader declaration order', () {
+    test('emits the six floats in shader declaration order', () {
       const params = DuoFoldParameters(
         eyeDistanceMillimeters: 450,
         blurSpread: 0.12,
@@ -36,16 +36,31 @@ void main() {
 
       final uniforms = params.packUniforms(
         tiltDegrees: 12.5,
-        hingeSide: 1,
+        liftDirX: -1,
+        liftDirY: 0,
         pixelsPerMillimeter: 6,
       );
 
-      expect(uniforms, hasLength(5));
+      expect(uniforms, hasLength(6));
       expect(uniforms[0], 12.5);
-      expect(uniforms[1], closeTo(2700, 1e-9)); // 450 mm at 6 px/mm
-      expect(uniforms[2], 1);
-      expect(uniforms[3], 0.12);
-      expect(uniforms[4], closeTo(0.015, 1e-9)); // reference density, unchanged
+      expect(uniforms[1], -1);
+      expect(uniforms[2], 0);
+      expect(uniforms[3], closeTo(2700, 1e-9)); // 450 mm at 6 px/mm
+      expect(uniforms[4], 0.12);
+      expect(uniforms[5], closeTo(0.015, 1e-9)); // reference density, unchanged
+    });
+
+    test('reports the tilt to the shader as a magnitude, never negative', () {
+      const params = DuoFoldParameters();
+
+      final uniforms = params.packUniforms(
+        tiltDegrees: -12.5,
+        liftDirX: 1,
+        liftDirY: 0,
+        pixelsPerMillimeter: 6,
+      );
+
+      expect(uniforms[0], 12.5);
     });
 
     test('normalizes darkening by density so dense screens do not crush to black', () {
@@ -53,24 +68,35 @@ void main() {
 
       final dense = params.packUniforms(
         tiltDegrees: 10,
-        hingeSide: 1,
+        liftDirX: -1,
+        liftDirY: 0,
         pixelsPerMillimeter: 18, // three times the 6 px/mm reference
       );
 
       // Radius is measured in physical px, so loss per px must shrink threefold.
-      expect(dense[4], closeTo(0.005, 1e-9));
+      expect(dense[5], closeTo(0.005, 1e-9));
     });
 
-    test('clamps tilt to the range the shader is stable over', () {
+    test('clamps tilt magnitude to the range the shader is stable over', () {
       const params = DuoFoldParameters();
 
       expect(
-        params.packUniforms(tiltDegrees: 91, hingeSide: 1, pixelsPerMillimeter: 6)[0],
+        params.packUniforms(
+          tiltDegrees: 91,
+          liftDirX: -1,
+          liftDirY: 0,
+          pixelsPerMillimeter: 6,
+        )[0],
         45,
       );
       expect(
-        params.packUniforms(tiltDegrees: -91, hingeSide: -1, pixelsPerMillimeter: 6)[0],
-        -45,
+        params.packUniforms(
+          tiltDegrees: -91,
+          liftDirX: 1,
+          liftDirY: 0,
+          pixelsPerMillimeter: 6,
+        )[0],
+        45,
       );
     });
   });

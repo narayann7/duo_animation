@@ -67,6 +67,7 @@ void main() {
                 0,
                 1,
                 0.25,
+                0.35,
                 0.75,
                 1,
                 7.5,
@@ -81,6 +82,7 @@ void main() {
       final sample = await source.samples.first;
 
       expect(sample.omegaScreenY, 0.25);
+      expect(sample.omegaScreenX, 0.35);
       expect(sample.omegaMagnitude, 0.75);
       expect(sample.hasGyro, isTrue);
       expect(sample.timestampSeconds, 7.5);
@@ -104,6 +106,7 @@ void main() {
                 0,
                 0,
                 1,
+                0,
                 0,
                 0,
                 0,
@@ -143,6 +146,7 @@ void main() {
           0,
           0,
           1,
+          0,
           0,
           0,
           1,

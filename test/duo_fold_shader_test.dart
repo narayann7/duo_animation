@@ -17,11 +17,12 @@ void main() {
     const params = DuoFoldParameters();
     final uniforms = params.packUniforms(
       tiltDegrees: 10,
-      hingeSide: 1,
+      liftDirX: -1,
+      liftDirY: 0,
       pixelsPerMillimeter: 6,
     );
 
-    // uTiltDegrees, uEyeDistancePx, uHingeSide, uBlurSpread, uDarkening.
+    // uTiltDegrees, uLiftDirX, uLiftDirY, uEyeDistancePx, uBlurSpread, uDarkening.
     expect(uniforms.length, DuoFoldShader.customFloatCount);
   });
 }

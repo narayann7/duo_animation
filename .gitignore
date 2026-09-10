@@ -37,3 +37,6 @@ migrate_working_dir/
 # .fvm/versions/* are symlinks into the local fvm install. Only .fvmrc,
 # which just names the pinned version, is tracked.
 .fvm/
+
+# Editor
+.vscode/

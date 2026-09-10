@@ -24,8 +24,8 @@ import kotlin.math.sqrt
  * game sensor.
  *
  * The plugin deliberately does no filtering. It reduces each reading to screen
- * axes, projects the gyro onto the screen's up axis, and hands 13 doubles to
- * Dart, where calibration, prediction and washout live.
+ * axes, projects the gyro onto the screen's up and right axes, and hands 14
+ * doubles to Dart, where calibration, prediction and washout live.
  */
 class DuoAnimationPlugin :
     FlutterPlugin,
@@ -131,7 +131,15 @@ class DuoAnimationPlugin :
                 } else {
                     0.0
                 }
+                val screenRight = screenRightInDeviceCoords()
                 payload[10] = if (hasGyroSample) {
+                    (gyroRate[0] * screenRight[0] +
+                        gyroRate[1] * screenRight[1] +
+                        gyroRate[2] * screenRight[2]).toDouble()
+                } else {
+                    0.0
+                }
+                payload[11] = if (hasGyroSample) {
                     sqrt(
                         gyroRate[0] * gyroRate[0] +
                             gyroRate[1] * gyroRate[1] +
@@ -140,8 +148,8 @@ class DuoAnimationPlugin :
                 } else {
                     0.0
                 }
-                payload[11] = if (hasGyroSample) 1.0 else 0.0
-                payload[12] = event.timestamp / 1_000_000_000.0
+                payload[12] = if (hasGyroSample) 1.0 else 0.0
+                payload[13] = event.timestamp / 1_000_000_000.0
 
                 sink.success(payload.copyOf())
             }
@@ -170,6 +178,20 @@ class DuoAnimationPlugin :
         else -> floatArrayOf(0f, 1f, 0f)
     }
 
+    /**
+     * Screen-right expressed in raw device coordinates, for the gyro
+     * projection. Follows the same per-rotation remapping as
+     * [screenUpInDeviceCoords] and [screenRemapAxes]: at ROTATION_0 the
+     * screen-right axis is device X, and each further quarter turn rotates it
+     * the same way the up axis rotates.
+     */
+    private fun screenRightInDeviceCoords(): FloatArray = when (displayRotation()) {
+        Surface.ROTATION_90 -> floatArrayOf(0f, 1f, 0f)
+        Surface.ROTATION_180 -> floatArrayOf(-1f, 0f, 0f)
+        Surface.ROTATION_270 -> floatArrayOf(0f, -1f, 0f)
+        else -> floatArrayOf(1f, 0f, 0f)
+    }
+
     // defaultDisplay is deprecated but it is the only rotation source on API 24
     // through 29. Its replacement, context.display, needs API 30, and minSdk
     // here is 24, so the fallback stays.
@@ -195,6 +217,6 @@ class DuoAnimationPlugin :
     private companion object {
         const val METHOD_CHANNEL = "dev.duoanimation/duo_animation"
         const val EVENT_CHANNEL = "dev.duoanimation/duo_animation/motion"
-        const val PAYLOAD_LENGTH = 13
+        const val PAYLOAD_LENGTH = 14
     }
 }

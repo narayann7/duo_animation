@@ -15,7 +15,7 @@ abstract final class DuoFoldShader {
   static const int firstCustomFloatIndex = 2;
 
   /// Number of floats `DuoFoldParameters.packUniforms` produces.
-  static const int customFloatCount = 5;
+  static const int customFloatCount = 6;
 
   static Future<ui.FragmentProgram>? _program;
 

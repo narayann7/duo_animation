@@ -6,6 +6,7 @@ MotionSample poseAt(double degrees, {required double t}) {
   return MotionSample(
     screenMatrix: Matrix3.rotationAboutY(degrees * 3.141592653589793 / 180),
     omegaScreenY: 0,
+    omegaScreenX: 0,
     omegaMagnitude: 1, // above the still threshold, so washout stays out of it
     hasGyro: true,
     timestampSeconds: t,
@@ -68,7 +69,8 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.tiltDegrees, closeTo(20, 0.05));
-    expect(controller.hingeSide, 1);
+    expect(controller.liftDirX, closeTo(-1, 0.01));
+    expect(controller.liftDirY, closeTo(0, 0.01));
     expect(notifications, greaterThan(0));
 
     controller.dispose();
@@ -94,8 +96,9 @@ void main() {
     controller.useSensor = false;
     controller.manualTiltDegrees = -12;
 
-    expect(controller.tiltDegrees, -12);
-    expect(controller.hingeSide, -1);
+    expect(controller.tiltDegrees, 12);
+    expect(controller.liftDirX, 1);
+    expect(controller.liftDirY, 0);
 
     controller.dispose();
     await source.dispose();
@@ -107,9 +110,11 @@ void main() {
 
     controller.manualTiltDegrees = 200;
     expect(controller.tiltDegrees, 45);
+    expect(controller.liftDirX, -1);
 
     controller.manualTiltDegrees = -200;
-    expect(controller.tiltDegrees, -45);
+    expect(controller.tiltDegrees, 45);
+    expect(controller.liftDirX, 1);
 
     controller.dispose();
   });
@@ -132,5 +137,28 @@ void main() {
 
     controller.dispose();
     await source.dispose();
+  });
+
+  test('defaults to horizontal constraints', () async {
+    final controller = DuoFoldController(source: FakeMotionSource());
+    expect(controller.constraints, const DuoFoldConstraints.horizontal());
+    controller.dispose();
+  });
+
+  test('constraints are swappable at runtime without recalibration', () async {
+    final controller = DuoFoldController(source: FakeMotionSource());
+    await controller.start();
+
+    controller.manualTiltDegrees = 20;
+    expect(controller.tiltDegrees, 20);
+    expect(controller.liftDirX, -1); // horizontal default: hinge right
+
+    controller.constraints = const DuoFoldConstraints.vertical();
+
+    // The same underlying pose is still purely horizontal, so a vertical-only
+    // constraint reads it as flat without any new sample or recalibration.
+    expect(controller.tiltDegrees, 0);
+
+    controller.dispose();
   });
 }

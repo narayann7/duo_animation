@@ -19,7 +19,7 @@ class DuoFoldMotion extends StatelessWidget {
     required this.child,
   });
 
-  /// Supplies tilt, hinge and display density.
+  /// Supplies tilt, lift direction and display density.
   final DuoFoldController controller;
 
   /// Physical tuning.
@@ -38,7 +38,7 @@ class DuoFoldMotion extends StatelessWidget {
       builder: (context, folded) {
         return DuoFold(
           tiltDegrees: controller.tiltDegrees,
-          hingeSide: controller.hingeSide,
+          liftDirection: controller.liftDirection,
           parameters: parameters,
           pixelsPerMillimeter: controller.pixelsPerMillimeter,
           enabled: enabled,

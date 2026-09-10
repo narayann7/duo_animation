@@ -6,18 +6,18 @@
 // - UI content lives on a fixed plane in world space, the zero-tilt screen plane.
 // - The eye is stationary on that plane's normal through the screen centre,
 //   uEyeDistancePx back from the plane.
-// - The tilted glass rotates by uTiltDegrees around the screen-space Y axis,
-//   hinged on the edge farther from the viewer. That edge stays in the plane.
+// - The pane hinges on a line at any angle and rotates by uTiltDegrees, the far
+//   side lifting toward the viewer. The hinge line itself stays in the plane.
 // - Per pixel: ray from the eye through the glass point, continued to the UI
 //   plane, then a Vogel-disk blur whose radius grows with the glass-to-plane
 //   gap, dimmed in proportion to how much it scatters. A missed kernel is black.
 //
 // Uniform conventions:
-// - uTiltDegrees: signed tilt about the screen-space Y axis. Positive means the
-//   right edge is farther from the viewer, so the hinge is on the RIGHT and the
-//   frost spreads left. Negative hinges on the LEFT.
-// - uHingeSide: +1 hinge right, -1 hinge left. Resolved at runtime from the
-//   tilt sign, never hardcoded.
+// - uTiltDegrees: magnitude only, 0 to 45, never negative. Direction lives in
+//   uLiftDirX/uLiftDirY instead of in the sign.
+// - uLiftDirX, uLiftDirY: unit vector, in fragment coordinates (y down),
+//   pointing from the hinge line toward the edge that rises toward the viewer.
+//   uLiftDirX = -1, uLiftDirY = 0 reproduces the old hinge-right behaviour.
 // - uBlurSpread: blur radius gained per px of glass-to-plane separation.
 // - uDarkening: fraction of light lost per px of blur radius.
 //
@@ -33,10 +33,11 @@ precision highp float;
 uniform vec2 uSize;            // engine: float 0, 1
 uniform sampler2D uTexture;    // engine: sampler 0
 uniform float uTiltDegrees;    // float 2
-uniform float uEyeDistancePx;  // float 3
-uniform float uHingeSide;      // float 4
-uniform float uBlurSpread;     // float 5
-uniform float uDarkening;      // float 6
+uniform float uLiftDirX;       // float 3
+uniform float uLiftDirY;       // float 4
+uniform float uEyeDistancePx;  // float 5
+uniform float uBlurSpread;     // float 6
+uniform float uDarkening;      // float 7
 
 out vec4 fragColor;
 
@@ -66,20 +67,22 @@ void main() {
     return;
   }
 
-  float tilt = radians(clamp(abs(uTiltDegrees), 0.0, MAX_TILT));
+  float tilt = radians(clamp(uTiltDegrees, 0.0, MAX_TILT));
   if (tilt < 1e-5) {
     fragColor = sampleContent(fragCoord);
     return;
   }
 
   // UI-plane frame: origin at the top-left of the untilted surface, in px.
-  float isRight = step(0.0, uHingeSide);
-  float hingeX = mix(0.0, uSize.x, isRight);
-  float side = mix(1.0, -1.0, isRight);
-  float d = abs(fragCoord.x - hingeX);
+  // liftDir points from the hinge line toward the edge that rises toward
+  // the viewer. sHinge is the hinge line's projection onto liftDir, the
+  // minimum projection of the rect's four corners.
+  vec2 liftDir = vec2(uLiftDirX, uLiftDirY);
+  float sHinge = min(0.0, uSize.x * liftDir.x) + min(0.0, uSize.y * liftDir.y);
+  float d = dot(fragCoord, liftDir) - sHinge;
 
   // Glass rotated by tilt around the hinge line, rising toward the viewer.
-  vec2 glass = vec2(hingeX + side * d * cos(tilt), fragCoord.y);
+  vec2 glass = fragCoord - liftDir * d * (1.0 - cos(tilt));
   float gap = d * sin(tilt);
   vec2 eye = uSize * 0.5;
 

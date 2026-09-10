@@ -4,6 +4,7 @@
 /// physical tuning knobs.
 library;
 
+export 'src/duo_fold_constraints.dart';
 export 'src/duo_fold_controller.dart';
 export 'src/duo_fold_errors.dart';
 export 'src/duo_fold_motion_widget.dart';

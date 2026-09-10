@@ -5,10 +5,13 @@ import 'package:duo_animation/src/motion/matrix3.dart';
 import 'package:duo_animation/src/motion/motion_sample.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Builds a sample whose pose is [degrees] of tilt about the screen Y axis.
+/// Builds a sample whose pose is [degrees] of tilt about the screen Y axis
+/// (screen-right lean only, `tiltY` stays zero). This is today's single-axis
+/// pose, unchanged.
 MotionSample sampleAt(
   double degrees, {
   double omegaScreenY = 0,
+  double omegaScreenX = 0,
   double omegaMagnitude = 0,
   bool hasGyro = true,
   required double t,
@@ -16,6 +19,38 @@ MotionSample sampleAt(
   return MotionSample(
     screenMatrix: Matrix3.rotationAboutY(degrees * math.pi / 180),
     omegaScreenY: omegaScreenY,
+    omegaScreenX: omegaScreenX,
+    omegaMagnitude: omegaMagnitude,
+    hasGyro: hasGyro,
+    timestampSeconds: t,
+  );
+}
+
+/// Builds a sample whose pose reads exactly [tiltXDegrees] and
+/// [tiltYDegrees] once run through [Matrix3.screenNormalTilt]-style atan2.
+///
+/// The filter only ever reads indices 2, 5 and 8 of the relative matrix (the
+/// screen-normal column) to derive `tiltX` and `tiltY`, so setting `nz = 1`
+/// and `nx = tan(tiltX)`, `ny = tan(tiltY)` gives each axis an exact,
+/// independent target angle without needing a fully orthonormal rotation
+/// matrix.
+MotionSample sampleAtXY(
+  double tiltXDegrees,
+  double tiltYDegrees, {
+  double omegaScreenY = 0,
+  double omegaScreenX = 0,
+  double omegaMagnitude = 0,
+  bool hasGyro = true,
+  required double t,
+}) {
+  final matrix = List<double>.of(Matrix3.identity);
+  matrix[2] = math.tan(tiltXDegrees * math.pi / 180);
+  matrix[5] = math.tan(tiltYDegrees * math.pi / 180);
+  matrix[8] = 1;
+  return MotionSample(
+    screenMatrix: matrix,
+    omegaScreenY: omegaScreenY,
+    omegaScreenX: omegaScreenX,
     omegaMagnitude: omegaMagnitude,
     hasGyro: hasGyro,
     timestampSeconds: t,
@@ -34,6 +69,27 @@ FoldState settle(FoldMotionModel model, double degrees, {int count = 60}) {
   return state;
 }
 
+/// Same as [settle] but for a two-axis pose built with [sampleAtXY].
+FoldState settleXY(
+  FoldMotionModel model,
+  double tiltXDegrees,
+  double tiltYDegrees, {
+  int count = 60,
+}) {
+  var state = FoldState.zero;
+  for (var i = 0; i < count; i++) {
+    state = model.update(
+      sampleAtXY(
+        tiltXDegrees,
+        tiltYDegrees,
+        omegaMagnitude: 1,
+        t: 0.02 * (i + 1),
+      ),
+    );
+  }
+  return state;
+}
+
 void main() {
   group('calibration', () {
     test('the first sample latches the reference pose and reports zero tilt', () {
@@ -41,7 +97,8 @@ void main() {
       final state = model.update(sampleAt(30, t: 0));
 
       expect(state.tiltDegrees, 0);
-      expect(state.hingeSide, 1);
+      expect(state.liftDirX, -1);
+      expect(state.liftDirY, 0);
       expect(model.state, state);
     });
 
@@ -68,13 +125,54 @@ void main() {
     });
   });
 
-  group('hinge side', () {
-    test('positive tilt hinges right, negative hinges left', () {
+  group('lift direction', () {
+    test('a rightward lean lifts the left edge, a leftward lean the right', () {
       final right = FoldMotionModel()..update(sampleAt(0, t: 0));
-      expect(settle(right, 20).hingeSide, 1);
+      final rightState = settle(right, 20);
+      expect(rightState.liftDirX, closeTo(-1, 0.01));
+      expect(rightState.liftDirY, closeTo(0, 0.01));
 
       final left = FoldMotionModel()..update(sampleAt(0, t: 0));
-      expect(settle(left, -20).hingeSide, -1);
+      final leftState = settle(left, -20);
+      expect(leftState.liftDirX, closeTo(1, 0.01));
+      expect(leftState.liftDirY, closeTo(0, 0.01));
+    });
+
+    test(
+      'a pure pitch pose lifts down the screen with magnitude equal to the '
+      'pitch angle',
+      () {
+        final model = FoldMotionModel()..update(sampleAtXY(0, 0, t: 0));
+        final state = settleXY(model, 0, 20);
+
+        expect(state.tiltDegrees, closeTo(20, 0.01));
+        expect(state.liftDirX, closeTo(0, 0.01));
+        expect(state.liftDirY, closeTo(1, 0.01));
+      },
+    );
+
+    test(
+      'a diagonal pose has a magnitude equal to the hypotenuse of the two '
+      'angles and a 45-degree-ish direction',
+      () {
+        final model = FoldMotionModel()..update(sampleAtXY(0, 0, t: 0));
+        final state = settleXY(model, 20, 20);
+
+        expect(state.tiltDegrees, closeTo(math.sqrt(20 * 20 + 20 * 20), 0.05));
+        expect(state.liftDirX, closeTo(-math.sqrt1_2, 0.01));
+        expect(state.liftDirY, closeTo(math.sqrt1_2, 0.01));
+      },
+    );
+
+    test('at rest the direction is finite and equals the documented fallback', () {
+      final model = FoldMotionModel()..update(sampleAtXY(0, 0, t: 0));
+      final state = settleXY(model, 0, 0);
+
+      expect(state.tiltDegrees, 0);
+      expect(state.liftDirX, -1);
+      expect(state.liftDirY, 0);
+      expect(state.liftDirX.isFinite, isTrue);
+      expect(state.liftDirY.isFinite, isTrue);
     });
   });
 
@@ -108,6 +206,18 @@ void main() {
         sampleAt(0, omegaScreenY: 1, hasGyro: false, t: 0.02),
       );
       expect(state.tiltDegrees, 0);
+    });
+
+    test('omegaScreenX drives the second axis prediction the same way', () {
+      final model = FoldMotionModel(autoRecenter: false)
+        ..update(sampleAtXY(0, 0, t: 0));
+
+      final state = model.update(
+        sampleAtXY(0, 0, omegaScreenX: 1, omegaMagnitude: 1, t: 0.02),
+      );
+      expect(state.tiltDegrees, closeTo(0.7 * 0.04 * 180 / math.pi, 0.01));
+      expect(state.liftDirX, closeTo(0, 0.01));
+      expect(state.liftDirY, closeTo(1, 0.01));
     });
   });
 
@@ -159,18 +269,26 @@ void main() {
   });
 
   group('clamping', () {
-    test('never reports beyond the stable range', () {
+    test('never reports a magnitude beyond the stable range', () {
       final model = FoldMotionModel(autoRecenter: false)..update(sampleAt(0, t: 0));
-      expect(settle(model, 80).tiltDegrees, 45);
-      expect(settle(model, -80).tiltDegrees, -45);
+      final positive = settle(model, 80);
+      expect(positive.tiltDegrees, 45);
+      expect(positive.liftDirX, closeTo(-1, 0.01));
+
+      final negativeModel = FoldMotionModel(autoRecenter: false)
+        ..update(sampleAt(0, t: 0));
+      final negative = settle(negativeModel, -80);
+      expect(negative.tiltDegrees, 45);
+      expect(negative.liftDirX, closeTo(1, 0.01));
     });
   });
 
   group('MotionSample.fromPayload', () {
-    test('decodes the 13-double wire format', () {
+    test('decodes the 14-double wire format', () {
       final payload = <double>[
         1, 0, 0, 0, 1, 0, 0, 0, 1, // matrix
         0.5, // omegaScreenY
+        0.4, // omegaScreenX
         0.9, // omegaMagnitude
         1, // hasGyro
         12.25, // timestampSeconds
@@ -180,6 +298,7 @@ void main() {
 
       expect(sample.screenMatrix, Matrix3.identity);
       expect(sample.omegaScreenY, 0.5);
+      expect(sample.omegaScreenX, 0.4);
       expect(sample.omegaMagnitude, 0.9);
       expect(sample.hasGyro, isTrue);
       expect(sample.timestampSeconds, 12.25);

@@ -59,7 +59,13 @@ class DuoFoldParameters {
   /// Packs the custom float uniforms in shader declaration order.
   ///
   /// The engine owns float uniforms 0 and 1 (the filter input size) and sampler
-  /// 0 (the filter input itself), so these five land at indices 2 through 6.
+  /// 0 (the filter input itself), so these six land at indices 2 through 7.
+  ///
+  /// [tiltDegrees] is clamped to plus or minus [maxTiltDegrees] and then
+  /// reported to the shader as a magnitude: direction lives in [liftDirX] and
+  /// [liftDirY] instead of in the sign, so a negative [tiltDegrees] and a
+  /// positive one of the same size pack identically unless the lift direction
+  /// also differs.
   ///
   /// [pixelsPerMillimeter] must already be a resolved, finite, positive value:
   /// this method clamps it away from zero but does not guard against NaN,
@@ -68,16 +74,18 @@ class DuoFoldParameters {
   /// pass a platform-reported or user-supplied value straight through.
   List<double> packUniforms({
     required double tiltDegrees,
-    required double hingeSide,
+    required double liftDirX,
+    required double liftDirY,
     required double pixelsPerMillimeter,
   }) {
     final clampedTilt =
         tiltDegrees.clamp(-maxTiltDegrees, maxTiltDegrees).toDouble();
     final density = math.max(pixelsPerMillimeter, 1e-6);
     return <double>[
-      clampedTilt,
+      clampedTilt.abs(),
+      liftDirX,
+      liftDirY,
       eyeDistanceMillimeters * density,
-      hingeSide,
       blurSpread,
       darkening * referencePixelsPerMillimeter / density,
     ];

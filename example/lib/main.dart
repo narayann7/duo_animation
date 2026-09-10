@@ -66,6 +66,15 @@ class _TiltReadout extends StatelessWidget {
 
   final DuoFoldController controller;
 
+  /// Names the hinge nearest the current lift direction, for display only.
+  /// Ties (an exactly diagonal lift) favor the horizontal label.
+  static String _hingeLabel(double liftDirX, double liftDirY) {
+    if (liftDirX.abs() >= liftDirY.abs()) {
+      return liftDirX < 0 ? 'right' : 'left';
+    }
+    return liftDirY > 0 ? 'top' : 'bottom';
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -73,7 +82,7 @@ class _TiltReadout extends StatelessWidget {
       listenable: controller,
       builder: (context, _) {
         final tilt = controller.tiltDegrees;
-        final hinge = controller.hingeSide < 0 ? 'L' : 'R';
+        final hinge = _hingeLabel(controller.liftDirX, controller.liftDirY);
         return Row(
           children: [
             Expanded(
@@ -100,6 +109,75 @@ class _TiltReadout extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Which of the four constraint presets the demo chips can pick.
+enum _ConstraintOption { free, horizontal, vertical, rightOnly }
+
+/// Extension is private to this file: it just turns each preset into the
+/// [DuoFoldConstraints] value and label the chip row needs.
+extension on _ConstraintOption {
+  String get label {
+    switch (this) {
+      case _ConstraintOption.free:
+        return 'Free';
+      case _ConstraintOption.horizontal:
+        return 'Horizontal';
+      case _ConstraintOption.vertical:
+        return 'Vertical';
+      case _ConstraintOption.rightOnly:
+        return 'Right only';
+    }
+  }
+
+  DuoFoldConstraints get constraints {
+    switch (this) {
+      case _ConstraintOption.free:
+        return const DuoFoldConstraints.free();
+      case _ConstraintOption.horizontal:
+        return const DuoFoldConstraints.horizontal();
+      case _ConstraintOption.vertical:
+        return const DuoFoldConstraints.vertical();
+      case _ConstraintOption.rightOnly:
+        return DuoFoldConstraints.only(DuoFoldHinge.right);
+    }
+  }
+}
+
+/// A row of choice chips that switch [controller]'s constraint mode live, so
+/// the difference between free and axis-locked folding is one tap away.
+class _ConstraintPicker extends StatefulWidget {
+  const _ConstraintPicker({required this.controller});
+
+  final DuoFoldController controller;
+
+  @override
+  State<_ConstraintPicker> createState() => _ConstraintPickerState();
+}
+
+class _ConstraintPickerState extends State<_ConstraintPicker> {
+  // DuoFoldController defaults to DuoFoldConstraints.horizontal().
+  _ConstraintOption _selected = _ConstraintOption.horizontal;
+
+  void _select(_ConstraintOption option) {
+    setState(() => _selected = option);
+    widget.controller.constraints = option.constraints;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (final option in _ConstraintOption.values)
+          ChoiceChip(
+            label: Text(option.label),
+            selected: _selected == option,
+            onSelected: (_) => _select(option),
+          ),
+      ],
     );
   }
 }
@@ -135,6 +213,8 @@ class _DemoContent extends StatelessWidget {
         Text('Team updates', style: textTheme.headlineMedium),
         const SizedBox(height: 4),
         _TiltReadout(controller: controller),
+        const SizedBox(height: 8),
+        _ConstraintPicker(controller: controller),
         const SizedBox(height: 8),
         Card(
           child: Padding(
