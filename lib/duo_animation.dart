@@ -6,6 +6,7 @@ library;
 
 export 'src/duo_fold_errors.dart';
 export 'src/duo_fold_parameters.dart';
+export 'src/duo_fold_widget.dart';
 export 'src/motion/display_metrics.dart';
 export 'src/motion/motion_sample.dart';
 export 'src/motion/motion_source.dart' show DuoMotionSource, FakeMotionSource;

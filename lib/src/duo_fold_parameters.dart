@@ -60,6 +60,12 @@ class DuoFoldParameters {
   ///
   /// The engine owns float uniforms 0 and 1 (the filter input size) and sampler
   /// 0 (the filter input itself), so these five land at indices 2 through 6.
+  ///
+  /// [pixelsPerMillimeter] must already be a resolved, finite, positive value:
+  /// this method clamps it away from zero but does not guard against NaN,
+  /// since `math.max` propagates NaN rather than rejecting it. Callers must
+  /// route the raw density through [resolvePixelsPerMillimeter] first; do not
+  /// pass a platform-reported or user-supplied value straight through.
   List<double> packUniforms({
     required double tiltDegrees,
     required double hingeSide,
