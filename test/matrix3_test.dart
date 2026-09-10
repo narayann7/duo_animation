@@ -39,8 +39,10 @@ void main() {
     });
 
     test('composes rotations additively about the same axis', () {
-      final composed =
-          Matrix3.multiply(Matrix3.rotationAboutY(0.2), Matrix3.rotationAboutY(0.3));
+      final composed = Matrix3.multiply(
+        Matrix3.rotationAboutY(0.2),
+        Matrix3.rotationAboutY(0.3),
+      );
       final direct = Matrix3.rotationAboutY(0.5);
       for (var i = 0; i < 9; i++) {
         expect(composed[i], closeTo(direct[i], 1e-12));

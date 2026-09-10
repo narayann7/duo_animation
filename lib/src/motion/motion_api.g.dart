@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart' show immutable, protected, visibleForTesting;
 
 Object? _extractReplyValueOrThrow(
-    List<Object?>? replyList,
-    String channelName, {
-    required bool isNullValid,
+  List<Object?>? replyList,
+  String channelName, {
+  required bool isNullValid,
 }) {
   if (replyList == null) {
     throw PlatformException(
@@ -46,8 +46,9 @@ bool _deepEquals(Object? a, Object? b) {
   }
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed
-            .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+        a.indexed.every(
+          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
+        );
   }
   if (a is Map && b is Map) {
     if (a.length != b.length) {
@@ -95,7 +96,6 @@ int _deepHash(Object? value) {
   }
   return value.hashCode;
 }
-
 
 /// One orientation reading, already reduced to screen axes by the native side.
 ///
@@ -147,7 +147,8 @@ class MotionFrame {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static MotionFrame decode(Object result) {
     result as List<Object?>;
@@ -170,7 +171,12 @@ class MotionFrame {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(screenMatrix, other.screenMatrix) && _deepEquals(omegaScreenY, other.omegaScreenY) && _deepEquals(omegaScreenX, other.omegaScreenX) && _deepEquals(omegaMagnitude, other.omegaMagnitude) && _deepEquals(hasGyro, other.hasGyro) && _deepEquals(timestampSeconds, other.timestampSeconds);
+    return _deepEquals(screenMatrix, other.screenMatrix) &&
+        _deepEquals(omegaScreenY, other.omegaScreenY) &&
+        _deepEquals(omegaScreenX, other.omegaScreenX) &&
+        _deepEquals(omegaMagnitude, other.omegaMagnitude) &&
+        _deepEquals(hasGyro, other.hasGyro) &&
+        _deepEquals(timestampSeconds, other.timestampSeconds);
   }
 
   @override
@@ -198,14 +204,12 @@ class MotionMetrics {
   bool hasRotationSensor;
 
   List<Object?> _toList() {
-    return <Object?>[
-      pixelsPerMillimeter,
-      hasRotationSensor,
-    ];
+    return <Object?>[pixelsPerMillimeter, hasRotationSensor];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static MotionMetrics decode(Object result) {
     result as List<Object?>;
@@ -224,7 +228,8 @@ class MotionMetrics {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(pixelsPerMillimeter, other.pixelsPerMillimeter) && _deepEquals(hasRotationSensor, other.hasRotationSensor);
+    return _deepEquals(pixelsPerMillimeter, other.pixelsPerMillimeter) &&
+        _deepEquals(hasRotationSensor, other.hasRotationSensor);
   }
 
   @override
@@ -237,7 +242,6 @@ class MotionMetrics {
   }
 }
 
-
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -245,10 +249,10 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is MotionFrame) {
+    } else if (value is MotionFrame) {
       buffer.putUint8(129);
       writeValue(buffer, value.encode());
-    }    else if (value is MotionMetrics) {
+    } else if (value is MotionMetrics) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
     } else {
@@ -269,16 +273,22 @@ class _PigeonCodec extends StandardMessageCodec {
   }
 }
 
-const StandardMethodCodec pigeonMethodCodec = StandardMethodCodec(_PigeonCodec());
+const StandardMethodCodec pigeonMethodCodec = StandardMethodCodec(
+  _PigeonCodec(),
+);
 
 /// Request and response calls into the native side.
 class DuoMotionHostApi {
   /// Constructor for [DuoMotionHostApi]. The [binaryMessenger] named argument is
   /// available for dependency injection. If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  DuoMotionHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
-      : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  DuoMotionHostApi({
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) : pigeonVar_binaryMessenger = binaryMessenger,
+       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
+           ? '.$messageChannelSuffix'
+           : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -287,7 +297,8 @@ class DuoMotionHostApi {
 
   /// Reads display density and sensor availability once.
   Future<MotionMetrics> metrics() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.duo_animation.DuoMotionHostApi.metrics$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.duo_animation.DuoMotionHostApi.metrics$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -297,17 +308,17 @@ class DuoMotionHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as MotionMetrics;
   }
 
   /// Unregisters native sensor listeners.
   Future<void> stop() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.duo_animation.DuoMotionHostApi.stop$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.duo_animation.DuoMotionHostApi.stop$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -317,11 +328,10 @@ class DuoMotionHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 }
 
@@ -334,14 +344,15 @@ class DuoMotionHostApi {
 /// not be called multiple times for the same `instanceName`. To deliver
 /// events to multiple listeners, call this method once and listen to the
 /// returned broadcast stream multiple times instead.
-Stream<MotionFrame> streamMotion( {String instanceName = ''}) {
+Stream<MotionFrame> streamMotion({String instanceName = ''}) {
   if (instanceName.isNotEmpty) {
     instanceName = '.$instanceName';
   }
-  final EventChannel streamMotionChannel =
-      EventChannel('dev.flutter.pigeon.duo_animation.DuoMotionEventApi.streamMotion$instanceName', pigeonMethodCodec);
+  final EventChannel streamMotionChannel = EventChannel(
+    'dev.flutter.pigeon.duo_animation.DuoMotionEventApi.streamMotion$instanceName',
+    pigeonMethodCodec,
+  );
   return streamMotionChannel.receiveBroadcastStream().map((dynamic event) {
     return event as MotionFrame;
   });
 }
-    

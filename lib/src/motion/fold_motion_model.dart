@@ -85,7 +85,9 @@ class _AxisFilter {
     lastPredicted = predicted;
 
     if (autoRecenter && still) {
-      final alpha = (dt / FoldMotionModel.recenterTau).clamp(0.0, 1.0).toDouble();
+      final alpha = (dt / FoldMotionModel.recenterTau)
+          .clamp(0.0, 1.0)
+          .toDouble();
       baselineRadians += Matrix3.wrapAngle(predicted - baselineRadians) * alpha;
     }
 
@@ -181,8 +183,10 @@ class FoldMotionModel {
       return _state = FoldState.zero;
     }
 
-    final relative =
-        Matrix3.multiply(Matrix3.transpose(_reference!), sample.screenMatrix);
+    final relative = Matrix3.multiply(
+      Matrix3.transpose(_reference!),
+      sample.screenMatrix,
+    );
     final measuredX = Matrix3.screenNormalTilt(relative);
     final measuredY = math.atan2(relative[5], relative[8]);
 
@@ -194,7 +198,10 @@ class FoldMotionModel {
         : (sample.timestampSeconds - previous).clamp(0.0, 0.5).toDouble();
     _lastTimestampSeconds = sample.timestampSeconds;
 
-    final still = sample.omegaMagnitude < stillThreshold;
+    // A sample with no gyro behind it reports a zero rate, which would read as
+    // perfectly still and let the washout eat a tilt the user is deliberately
+    // holding. No gyro means no stillness evidence, so the washout stays out.
+    final still = sample.hasGyro && sample.omegaMagnitude < stillThreshold;
 
     final tiltRadiansX = _axisX.update(
       measured: measuredX,
@@ -206,7 +213,11 @@ class FoldMotionModel {
     );
     final tiltRadiansY = _axisY.update(
       measured: measuredY,
-      omega: sample.omegaScreenX,
+      // Negated on purpose. measuredY reads the normal's excursion toward
+      // screen-up, and a positive rate about screen-right swings the normal
+      // the other way, so the angle runs opposite to the rate. The horizontal
+      // axis has no such flip: there, measuredX and omegaScreenY share a sign.
+      omega: -sample.omegaScreenX,
       hasGyro: sample.hasGyro,
       dt: dt,
       autoRecenter: _autoRecenter,

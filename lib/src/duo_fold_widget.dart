@@ -142,8 +142,9 @@ class _DuoFoldState extends State<DuoFold> {
       return widget.child;
     }
 
-    final density =
-        widget.parameters.resolvePixelsPerMillimeter(widget.pixelsPerMillimeter);
+    final density = widget.parameters.resolvePixelsPerMillimeter(
+      widget.pixelsPerMillimeter,
+    );
     DuoFoldShader.applyUniforms(
       shader,
       widget.parameters.packUniforms(
@@ -167,10 +168,7 @@ class _DuoFoldState extends State<DuoFold> {
     }
 
     return ClipRect(
-      child: ImageFiltered(
-        imageFilter: filter,
-        child: widget.child,
-      ),
+      child: ImageFiltered(imageFilter: filter, child: widget.child),
     );
   }
 }

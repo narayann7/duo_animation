@@ -13,22 +13,24 @@ void main() {
   final diagonalDirY = math.sqrt1_2;
 
   group('horizontal', () {
-    test('a diagonal pose folds purely left or right, at the on-axis component',
-        () {
-      const constraints = DuoFoldConstraints.horizontal();
+    test(
+      'a diagonal pose folds purely left or right, at the on-axis component',
+      () {
+        const constraints = DuoFoldConstraints.horizontal();
 
-      final resolved = constraints.resolve(
-        tiltDegrees: diagonalMagnitude,
-        liftDirX: diagonalDirX,
-        liftDirY: diagonalDirY,
-      );
+        final resolved = constraints.resolve(
+          tiltDegrees: diagonalMagnitude,
+          liftDirX: diagonalDirX,
+          liftDirY: diagonalDirY,
+        );
 
-      // Not the full 28.28-degree hypotenuse: just the 20-degree component
-      // along the horizontal axis.
-      expect(resolved.tiltDegrees, closeTo(20, 0.01));
-      expect(resolved.liftDirX, -1);
-      expect(resolved.liftDirY, 0);
-    });
+        // Not the full 28.28-degree hypotenuse: just the 20-degree component
+        // along the horizontal axis.
+        expect(resolved.tiltDegrees, closeTo(20, 0.01));
+        expect(resolved.liftDirX, -1);
+        expect(resolved.liftDirY, 0);
+      },
+    );
 
     test('a leftward-leaning pose resolves to the left hinge', () {
       const constraints = DuoFoldConstraints.horizontal();
@@ -46,20 +48,22 @@ void main() {
   });
 
   group('vertical', () {
-    test('a diagonal pose folds purely top or bottom, at the on-axis component',
-        () {
-      const constraints = DuoFoldConstraints.vertical();
+    test(
+      'a diagonal pose folds purely top or bottom, at the on-axis component',
+      () {
+        const constraints = DuoFoldConstraints.vertical();
 
-      final resolved = constraints.resolve(
-        tiltDegrees: diagonalMagnitude,
-        liftDirX: diagonalDirX,
-        liftDirY: diagonalDirY,
-      );
+        final resolved = constraints.resolve(
+          tiltDegrees: diagonalMagnitude,
+          liftDirX: diagonalDirX,
+          liftDirY: diagonalDirY,
+        );
 
-      expect(resolved.tiltDegrees, closeTo(20, 0.01));
-      expect(resolved.liftDirX, 0);
-      expect(resolved.liftDirY, 1);
-    });
+        expect(resolved.tiltDegrees, closeTo(20, 0.01));
+        expect(resolved.liftDirX, 0);
+        expect(resolved.liftDirY, 1);
+      },
+    );
 
     test('a downward-leaning pose resolves to the bottom hinge', () {
       const constraints = DuoFoldConstraints.vertical();
@@ -187,19 +191,21 @@ void main() {
       });
     }
 
-    test('an empty allow-set always reads as flat, with a finite direction',
-        () {
-      final constraints = DuoFoldConstraints.allow(const <DuoFoldHinge>{});
+    test(
+      'an empty allow-set always reads as flat, with a finite direction',
+      () {
+        final constraints = DuoFoldConstraints.allow(const <DuoFoldHinge>{});
 
-      final resolved = constraints.resolve(
-        tiltDegrees: 20,
-        liftDirX: -1,
-        liftDirY: 0,
-      );
+        final resolved = constraints.resolve(
+          tiltDegrees: 20,
+          liftDirX: -1,
+          liftDirY: 0,
+        );
 
-      expect(resolved.tiltDegrees, 0);
-      expect(resolved.liftDirX.isFinite, isTrue);
-      expect(resolved.liftDirY.isFinite, isTrue);
-    });
+        expect(resolved.tiltDegrees, 0);
+        expect(resolved.liftDirX.isFinite, isTrue);
+        expect(resolved.liftDirY.isFinite, isTrue);
+      },
+    );
   });
 }

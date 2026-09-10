@@ -150,8 +150,9 @@ class DuoFoldParameters {
     required double liftDirY,
     required double pixelsPerMillimeter,
   }) {
-    final clampedTilt =
-        tiltDegrees.clamp(-maxTiltDegrees, maxTiltDegrees).toDouble();
+    final clampedTilt = tiltDegrees
+        .clamp(-maxTiltDegrees, maxTiltDegrees)
+        .toDouble();
     final shapedTilt = _shape(clampedTilt.abs());
     final density = math.max(pixelsPerMillimeter, 1e-6);
     return <double>[
@@ -225,19 +226,20 @@ class DuoFoldParameters {
 
   @override
   int get hashCode => Object.hash(
-        eyeDistanceMillimeters,
-        pixelsPerMillimeter,
-        blurSpread,
-        darkening,
-        surroundColor,
-        hazeColor,
-        baseBlurMillimeters,
-        stretchEdges,
-        tiltResponse,
-      );
+    eyeDistanceMillimeters,
+    pixelsPerMillimeter,
+    blurSpread,
+    darkening,
+    surroundColor,
+    hazeColor,
+    baseBlurMillimeters,
+    stretchEdges,
+    tiltResponse,
+  );
 
   @override
-  String toString() => 'DuoFoldParameters(eye: ${eyeDistanceMillimeters}mm, '
+  String toString() =>
+      'DuoFoldParameters(eye: ${eyeDistanceMillimeters}mm, '
       'pxPerMm: $pixelsPerMillimeter, blur: $blurSpread, darken: $darkening, '
       'surround: $surroundColor, haze: $hazeColor, '
       'baseBlur: ${baseBlurMillimeters}mm, stretchEdges: $stretchEdges)';

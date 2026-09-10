@@ -24,8 +24,8 @@ class DuoFoldController extends ChangeNotifier {
     DuoMotionSource? source,
     bool autoRecenter = true,
     DuoFoldConstraints constraints = const DuoFoldConstraints.horizontal(),
-  })  : _source = source ?? ChannelMotionSource(),
-        _model = FoldMotionModel(autoRecenter: autoRecenter) {
+  }) : _source = source ?? ChannelMotionSource(),
+       _model = FoldMotionModel(autoRecenter: autoRecenter) {
     _constraints = constraints;
   }
 

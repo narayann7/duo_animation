@@ -17,14 +17,22 @@ void main() {
 
     test('falls back when the display metric is missing or nonsensical', () {
       const params = DuoFoldParameters();
-      expect(params.resolvePixelsPerMillimeter(null),
-          DuoFoldParameters.fallbackPixelsPerMillimeter);
-      expect(params.resolvePixelsPerMillimeter(0),
-          DuoFoldParameters.fallbackPixelsPerMillimeter);
-      expect(params.resolvePixelsPerMillimeter(double.nan),
-          DuoFoldParameters.fallbackPixelsPerMillimeter);
-      expect(params.resolvePixelsPerMillimeter(double.infinity),
-          DuoFoldParameters.fallbackPixelsPerMillimeter);
+      expect(
+        params.resolvePixelsPerMillimeter(null),
+        DuoFoldParameters.fallbackPixelsPerMillimeter,
+      );
+      expect(
+        params.resolvePixelsPerMillimeter(0),
+        DuoFoldParameters.fallbackPixelsPerMillimeter,
+      );
+      expect(
+        params.resolvePixelsPerMillimeter(double.nan),
+        DuoFoldParameters.fallbackPixelsPerMillimeter,
+      );
+      expect(
+        params.resolvePixelsPerMillimeter(double.infinity),
+        DuoFoldParameters.fallbackPixelsPerMillimeter,
+      );
     });
   });
 
@@ -81,8 +89,10 @@ void main() {
       // The endpoints do not move, which is what keeps the widest tilt looking
       // the same as it did before the curve was applied.
       expect(packedTilt(eased, 0), 0);
-      expect(packedTilt(eased, DuoFoldParameters.maxTiltDegrees),
-          closeTo(DuoFoldParameters.maxTiltDegrees, 1e-9));
+      expect(
+        packedTilt(eased, DuoFoldParameters.maxTiltDegrees),
+        closeTo(DuoFoldParameters.maxTiltDegrees, 1e-9),
+      );
     });
 
     test('a nonsensical tilt response falls back to linear', () {
@@ -181,11 +191,11 @@ void main() {
       const translucent = DuoFoldParameters(surroundColor: Color(0x33204080));
 
       List<double> pack(DuoFoldParameters params) => params.packUniforms(
-            tiltDegrees: 10,
-            liftDirX: -1,
-            liftDirY: 0,
-            pixelsPerMillimeter: 6,
-          );
+        tiltDegrees: 10,
+        liftDirX: -1,
+        liftDirY: 0,
+        pixelsPerMillimeter: 6,
+      );
 
       expect(pack(translucent).sublist(6), pack(opaque).sublist(6));
     });
@@ -196,11 +206,11 @@ void main() {
       const translucent = DuoFoldParameters(hazeColor: Color(0x40EFEAFF));
 
       List<double> pack(DuoFoldParameters params) => params.packUniforms(
-            tiltDegrees: 10,
-            liftDirX: -1,
-            liftDirY: 0,
-            pixelsPerMillimeter: 6,
-          );
+        tiltDegrees: 10,
+        liftDirX: -1,
+        liftDirY: 0,
+        pixelsPerMillimeter: 6,
+      );
 
       expect(pack(translucent).sublist(9), pack(opaque).sublist(9));
     });
@@ -218,19 +228,22 @@ void main() {
       expect(uniforms[0], 12.5);
     });
 
-    test('normalizes darkening by density so dense screens do not crush to black', () {
-      const params = DuoFoldParameters(darkening: 0.015);
+    test(
+      'normalizes darkening by density so dense screens do not crush to black',
+      () {
+        const params = DuoFoldParameters(darkening: 0.015);
 
-      final dense = params.packUniforms(
-        tiltDegrees: 10,
-        liftDirX: -1,
-        liftDirY: 0,
-        pixelsPerMillimeter: 18, // three times the 6 px/mm reference
-      );
+        final dense = params.packUniforms(
+          tiltDegrees: 10,
+          liftDirX: -1,
+          liftDirY: 0,
+          pixelsPerMillimeter: 18, // three times the 6 px/mm reference
+        );
 
-      // Radius is measured in physical px, so loss per px must shrink threefold.
-      expect(dense[5], closeTo(0.005, 1e-9));
-    });
+        // Radius is measured in physical px, so loss per px must shrink threefold.
+        expect(dense[5], closeTo(0.005, 1e-9));
+      },
+    );
 
     test('clamps tilt magnitude to the range the shader is stable over', () {
       const params = DuoFoldParameters();

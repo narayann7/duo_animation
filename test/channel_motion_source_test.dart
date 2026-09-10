@@ -19,7 +19,10 @@ const String _stopChannel =
 /// The mock messenger encodes through the codec of whatever channel it is
 /// handed, so the stub has to carry Pigeon's codec rather than the standard
 /// one. A plain `EventChannel` here fails to encode a `MotionFrame`.
-const EventChannel _streamStub = EventChannel(_streamChannel, pigeonMethodCodec);
+const EventChannel _streamStub = EventChannel(
+  _streamChannel,
+  pigeonMethodCodec,
+);
 
 MotionFrame _frame({double timestampSeconds = 1}) {
   return MotionFrame(
@@ -51,9 +54,9 @@ void main() {
           pixelsPerMillimeter: 6.42,
           hasRotationSensor: true,
         );
-        return DuoMotionHostApi.pigeonChannelCodec.encodeMessage(
-          <Object?>[metrics],
-        );
+        return DuoMotionHostApi.pigeonChannelCodec.encodeMessage(<Object?>[
+          metrics,
+        ]);
       });
 
       final metrics = await ChannelMotionSource().readMetrics();
@@ -96,25 +99,28 @@ void main() {
       await source.dispose();
     });
 
-    test('survives a stream error instead of losing the subscription', () async {
-      messenger.setMockStreamHandler(
-        _streamStub,
-        MockStreamHandler.inline(
-          onListen: (arguments, sink) {
-            sink.error(code: 'sensor', message: 'transient glitch');
-            sink.success(_frame(timestampSeconds: 2));
-            sink.endOfStream();
-          },
-        ),
-      );
+    test(
+      'survives a stream error instead of losing the subscription',
+      () async {
+        messenger.setMockStreamHandler(
+          _streamStub,
+          MockStreamHandler.inline(
+            onListen: (arguments, sink) {
+              sink.error(code: 'sensor', message: 'transient glitch');
+              sink.success(_frame(timestampSeconds: 2));
+              sink.endOfStream();
+            },
+          ),
+        );
 
-      final source = ChannelMotionSource();
-      final samples = await source.samples.toList();
+        final source = ChannelMotionSource();
+        final samples = await source.samples.toList();
 
-      expect(samples, hasLength(1));
-      expect(samples.single.timestampSeconds, 2);
-      await source.dispose();
-    });
+        expect(samples, hasLength(1));
+        expect(samples.single.timestampSeconds, 2);
+        await source.dispose();
+      },
+    );
   });
 
   group('dispose', () {
@@ -122,7 +128,9 @@ void main() {
       var stopCalls = 0;
       messenger.setMockMessageHandler(_stopChannel, (message) async {
         stopCalls++;
-        return DuoMotionHostApi.pigeonChannelCodec.encodeMessage(<Object?>[null]);
+        return DuoMotionHostApi.pigeonChannelCodec.encodeMessage(<Object?>[
+          null,
+        ]);
       });
 
       await ChannelMotionSource().dispose();

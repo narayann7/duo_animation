@@ -6,7 +6,10 @@ void main() {
   test('the asset key carries the package prefix', () {
     // Shaders declared by a package are addressed through packages/<name>/.
     // Dropping the prefix is the classic way this fails only in a consumer app.
-    expect(DuoFoldShader.assetKey, 'packages/duo_animation/shaders/duo_animation.frag');
+    expect(
+      DuoFoldShader.assetKey,
+      'packages/duo_animation/shaders/duo_animation.frag',
+    );
   });
 
   test('custom floats start after the two the engine owns', () {

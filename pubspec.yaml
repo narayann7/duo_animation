@@ -1,7 +1,24 @@
 name: duo_animation
-description: iPhone Duo style tilt-driven frosted-glass fold effect for any Flutter widget subtree.
+description: >-
+  iPhone Duo style tilt-driven frosted-glass fold effect for any Flutter widget
+  subtree. Device motion drives a fragment shader on Impeller.
 version: 0.1.0
+homepage: https://github.com/narayann7/duo_animation
 repository: https://github.com/narayann7/duo_animation
+issue_tracker: https://github.com/narayann7/duo_animation/issues
+
+screenshots:
+  - path: assets/screenshot-fold.webp
+    description: An iPad tilted away from the hinge, the lifted half behind frosted glass.
+  - path: assets/screenshot-rest.webp
+    description: The same home screen at rest, where the effect is bypassed entirely.
+
+topics:
+  - animation
+  - shader
+  - sensors
+  - impeller
+  - duo
 
 environment:
   sdk: ^3.12.0
@@ -10,11 +27,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  meta: ^1.16.0
 
 dev_dependencies:
+  flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
   pigeon: ^28.1.0
 
 flutter:

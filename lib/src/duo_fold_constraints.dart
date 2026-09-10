@@ -57,45 +57,52 @@ class DuoFoldConstraints {
 
   /// Any direction, continuous. The hinge line follows the device freely.
   const DuoFoldConstraints.free({double maxTiltDegrees = 45})
-      : this._(null, maxTiltDegrees: maxTiltDegrees);
+    : this._(null, maxTiltDegrees: maxTiltDegrees);
 
   /// Left and right only. The hinge is always a vertical edge.
   const DuoFoldConstraints.horizontal({double maxTiltDegrees = 45})
-      : this._(
-          const {DuoFoldHinge.left, DuoFoldHinge.right},
-          maxTiltDegrees: maxTiltDegrees,
-        );
+    : this._(const {
+        DuoFoldHinge.left,
+        DuoFoldHinge.right,
+      }, maxTiltDegrees: maxTiltDegrees);
 
   /// Top and bottom only. The hinge is always a horizontal edge.
   const DuoFoldConstraints.vertical({double maxTiltDegrees = 45})
-      : this._(
-          const {DuoFoldHinge.top, DuoFoldHinge.bottom},
-          maxTiltDegrees: maxTiltDegrees,
-        );
+    : this._(const {
+        DuoFoldHinge.top,
+        DuoFoldHinge.bottom,
+      }, maxTiltDegrees: maxTiltDegrees);
 
   /// One hinge only. Tilting the other way reads as flat.
-  const DuoFoldConstraints.only(DuoFoldHinge hinge, {double maxTiltDegrees = 45})
-      : this._(
-          // A set literal built directly from a formal parameter (`{hinge}`)
-          // trips a const-evaluation limitation in the Dart compiler, so the
-          // set is picked from four fully-literal consts instead.
-          hinge == DuoFoldHinge.left
-              ? const {DuoFoldHinge.left}
-              : hinge == DuoFoldHinge.right
-                  ? const {DuoFoldHinge.right}
-                  : hinge == DuoFoldHinge.top
-                      ? const {DuoFoldHinge.top}
-                      : const {DuoFoldHinge.bottom},
-          maxTiltDegrees: maxTiltDegrees,
-        );
+  const DuoFoldConstraints.only(
+    DuoFoldHinge hinge, {
+    double maxTiltDegrees = 45,
+  }) : this._(
+         // A set literal built directly from a formal parameter (`{hinge}`)
+         // trips a const-evaluation limitation in the Dart compiler, so the
+         // set is picked from four fully-literal consts instead.
+         hinge == DuoFoldHinge.left
+             ? const {DuoFoldHinge.left}
+             : hinge == DuoFoldHinge.right
+             ? const {DuoFoldHinge.right}
+             : hinge == DuoFoldHinge.top
+             ? const {DuoFoldHinge.top}
+             : const {DuoFoldHinge.bottom},
+         maxTiltDegrees: maxTiltDegrees,
+       );
 
   /// An arbitrary subset of hinges. An empty set always reads as flat.
   ///
   /// Not const: [hinges] is defensively copied through `Set.unmodifiable`,
   /// which is not a const expression. If a const value is what you need,
   /// reach for [only], [horizontal], [vertical] or [free] instead.
-  DuoFoldConstraints.allow(Set<DuoFoldHinge> hinges, {double maxTiltDegrees = 45})
-      : this._(Set<DuoFoldHinge>.unmodifiable(hinges), maxTiltDegrees: maxTiltDegrees);
+  DuoFoldConstraints.allow(
+    Set<DuoFoldHinge> hinges, {
+    double maxTiltDegrees = 45,
+  }) : this._(
+         Set<DuoFoldHinge>.unmodifiable(hinges),
+         maxTiltDegrees: maxTiltDegrees,
+       );
 
   /// Null means unconstrained: [resolve] passes the pose through untouched.
   final Set<DuoFoldHinge>? _allowedHinges;
@@ -124,7 +131,11 @@ class DuoFoldConstraints {
     final clampedMagnitude = tiltDegrees.clamp(0.0, maxTiltDegrees).toDouble();
     final hinges = _allowedHinges;
     if (hinges == null) {
-      return (tiltDegrees: clampedMagnitude, liftDirX: liftDirX, liftDirY: liftDirY);
+      return (
+        tiltDegrees: clampedMagnitude,
+        liftDirX: liftDirX,
+        liftDirY: liftDirY,
+      );
     }
     if (hinges.isEmpty || clampedMagnitude <= 0) {
       return (tiltDegrees: 0, liftDirX: liftDirX, liftDirY: liftDirY);
@@ -144,8 +155,9 @@ class DuoFoldConstraints {
       return (tiltDegrees: 0, liftDirX: liftDirX, liftDirY: liftDirY);
     }
 
-    final component =
-        (clampedMagnitude * bestCosine).clamp(0.0, maxTiltDegrees).toDouble();
+    final component = (clampedMagnitude * bestCosine)
+        .clamp(0.0, maxTiltDegrees)
+        .toDouble();
     return (
       tiltDegrees: component,
       liftDirX: bestHinge._liftDirX,
@@ -162,11 +174,9 @@ class DuoFoldConstraints {
 
   @override
   int get hashCode => Object.hash(
-        _allowedHinges == null
-            ? null
-            : Object.hashAllUnordered(_allowedHinges),
-        maxTiltDegrees,
-      );
+    _allowedHinges == null ? null : Object.hashAllUnordered(_allowedHinges),
+    maxTiltDegrees,
+  );
 
   @override
   String toString() {

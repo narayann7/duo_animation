@@ -9,7 +9,8 @@ import 'duo_fold_errors.dart';
 /// uniforms each frame rather than building a new one.
 abstract final class DuoFoldShader {
   /// Runtime asset key. Shaders declared by a package live under `packages/`.
-  static const String assetKey = 'packages/duo_animation/shaders/duo_animation.frag';
+  static const String assetKey =
+      'packages/duo_animation/shaders/duo_animation.frag';
 
   /// The engine owns float uniforms 0 and 1, the filter input size.
   static const int firstCustomFloatIndex = 2;

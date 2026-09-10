@@ -1,0 +1,37 @@
+# Replaces .gitignore when the pub archive is built, so it has to repeat the
+# build and tooling excludes. Unanchored patterns match at any depth, which is
+# what covers example/ as well. Affects the published archive only.
+.dart_tool/
+build/
+.fvm/
+.fvmrc
+coverage/
+*.log
+.DS_Store
+pubspec.lock
+*.iml
+
+# The package's own tests. ~40 KB of the archive, and nothing that consumes the
+# package can run them. They stay in git.
+test/
+
+# Xcode's SwiftPM build cache under ios/. Git ignores it through .build/, but
+# this file replaces .gitignore at publish time, so without the line the index
+# databases land in the archive.
+.build/
+
+# Machine-local SDK path, written by the Gradle wrapper.
+local.properties
+
+# Repository documents, not package documents. pub.dev renders README and
+# CHANGELOG and nothing else, so these would ship unread. They stay in git,
+# which is where a contributor is standing when they need them.
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+
+# The demo clip, shown on the package page through a relative link that pub.dev
+# resolves against the repository. Keeping the pair out of the archive saves
+# about 1.9 MB on every download. The two screenshot stills stay: pub.dev reads
+# those from the archive itself, not from git.
+assets/demo.mp4
+assets/demo.webp
