@@ -22,7 +22,9 @@ void main() {
       pixelsPerMillimeter: 6,
     );
 
-    // uTiltDegrees, uLiftDirX, uLiftDirY, uEyeDistancePx, uBlurSpread, uDarkening.
+    // uTiltDegrees, uLiftDirX, uLiftDirY, uEyeDistancePx, uBlurSpread,
+    // uDarkening, three components each for the surround and haze colours,
+    // then uBaseBlurPx and uEdgeStretch.
     expect(uniforms.length, DuoFoldShader.customFloatCount);
   });
 }

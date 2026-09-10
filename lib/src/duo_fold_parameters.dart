@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 /// Physical parameters of the frosted-glass fold.
 ///
@@ -11,6 +12,10 @@ class DuoFoldParameters {
     this.pixelsPerMillimeter = 0,
     this.blurSpread = 0.12,
     this.darkening = 0.015,
+    this.surroundColor = const ui.Color(0xFF000000),
+    this.hazeColor = const ui.Color(0xFF000000),
+    this.baseBlurMillimeters = 0,
+    this.stretchEdges = true,
   });
 
   /// Distance from the viewer's eyes to the untilted screen, looking head-on.
@@ -29,11 +34,55 @@ class DuoFoldParameters {
   /// plane, the tangent of the scattering half-angle.
   final double blurSpread;
 
-  /// Fraction of light lost per pixel of blur radius. Frostier glass is darker.
+  /// Blur carried everywhere the moment the fold leaves rest, in millimetres of
+  /// physical screen.
+  ///
+  /// [blurSpread] alone gives a gradient that reaches zero on the hinge line,
+  /// which leaves the hinge side of the screen perfectly sharp. That is what
+  /// the optics say happens, since the glass touches the content there, but a
+  /// pane of frosted glass is frosted across its whole face. This adds that
+  /// even frost. Zero, the default, leaves the pure model alone. It is
+  /// specified in millimetres so it holds its size across displays.
+  final double baseBlurMillimeters;
+
+  /// Fraction of light lost per pixel of blur radius. Frostier glass reads
+  /// further from the content and closer to [hazeColor].
   ///
   /// Authored against [referencePixelsPerMillimeter]; [packUniforms] rescales it
   /// for the real display so the look holds on any screen.
   final double darkening;
+
+  /// Whether content is sampled clamped to its own edge.
+  ///
+  /// A tilt swings part of the glass past the edge of the content, and the two
+  /// honest answers differ. Clamped, the default, the edge row and column smear
+  /// outward to fill that space and carry the same frost as everything else, so
+  /// the effect covers the whole screen with no boundary in it. Unclamped, that
+  /// region shows [surroundColor], which is the plainer reading of the optics:
+  /// there is nothing out there to see. [surroundColor] still applies to the
+  /// degenerate case where the glass reaches the eye.
+  final bool stretchEdges;
+
+  /// What lies beyond the edge of the content plane.
+  ///
+  /// Tilting swings part of the glass past the edge of the content, and there
+  /// is nothing there to sample. The shader writes an opaque colour, and the
+  /// filter input is the folded subtree alone, so nothing a host paints behind
+  /// the widget can show through those pixels: the colour has to be supplied
+  /// here. Black reads as a void, which is right for content floating in the
+  /// dark. Passing the host's own background colour instead makes the fold look
+  /// like it is happening on the surface it is drawn on, which is usually what
+  /// an app wants. Alpha is ignored.
+  final ui.Color surroundColor;
+
+  /// What the scattered light fades toward, at a rate set by [darkening].
+  ///
+  /// Glass that only absorbed would fade to black, and black here gives exactly
+  /// that. Real frosted glass scatters some light back out and veils toward
+  /// white, and any colour between the two tints the frost without changing how
+  /// fast it takes hold. At zero [darkening] this has no effect at all. Alpha is
+  /// ignored: the strength of the veil lives in [darkening].
+  final ui.Color hazeColor;
 
   /// Used when the platform reports no usable pixel density.
   static const double fallbackPixelsPerMillimeter = 6;
@@ -59,7 +108,13 @@ class DuoFoldParameters {
   /// Packs the custom float uniforms in shader declaration order.
   ///
   /// The engine owns float uniforms 0 and 1 (the filter input size) and sampler
-  /// 0 (the filter input itself), so these six land at indices 2 through 7.
+  /// 0 (the filter input itself), so these fourteen land at indices 2 through
+  /// 15.
+  /// The last six are the surround and haze colours, three components each. The
+  /// shader declares all six as separate scalars rather than two `vec3`s: a
+  /// vector uniform is padded and aligned by the backend, and these are
+  /// addressed by float index, so a padded vector silently shifts every uniform
+  /// after it. `uLiftDirX` and `uLiftDirY` are split for the same reason.
   ///
   /// [tiltDegrees] is clamped to plus or minus [maxTiltDegrees] and then
   /// reported to the shader as a magnitude: direction lives in [liftDirX] and
@@ -88,6 +143,14 @@ class DuoFoldParameters {
       eyeDistanceMillimeters * density,
       blurSpread,
       darkening * referencePixelsPerMillimeter / density,
+      surroundColor.r,
+      surroundColor.g,
+      surroundColor.b,
+      hazeColor.r,
+      hazeColor.g,
+      hazeColor.b,
+      baseBlurMillimeters * density,
+      stretchEdges ? 1.0 : 0.0,
     ];
   }
 
@@ -97,6 +160,10 @@ class DuoFoldParameters {
     double? pixelsPerMillimeter,
     double? blurSpread,
     double? darkening,
+    ui.Color? surroundColor,
+    ui.Color? hazeColor,
+    double? baseBlurMillimeters,
+    bool? stretchEdges,
   }) {
     return DuoFoldParameters(
       eyeDistanceMillimeters:
@@ -104,6 +171,10 @@ class DuoFoldParameters {
       pixelsPerMillimeter: pixelsPerMillimeter ?? this.pixelsPerMillimeter,
       blurSpread: blurSpread ?? this.blurSpread,
       darkening: darkening ?? this.darkening,
+      surroundColor: surroundColor ?? this.surroundColor,
+      hazeColor: hazeColor ?? this.hazeColor,
+      baseBlurMillimeters: baseBlurMillimeters ?? this.baseBlurMillimeters,
+      stretchEdges: stretchEdges ?? this.stretchEdges,
     );
   }
 
@@ -113,7 +184,11 @@ class DuoFoldParameters {
         other.eyeDistanceMillimeters == eyeDistanceMillimeters &&
         other.pixelsPerMillimeter == pixelsPerMillimeter &&
         other.blurSpread == blurSpread &&
-        other.darkening == darkening;
+        other.darkening == darkening &&
+        other.surroundColor == surroundColor &&
+        other.hazeColor == hazeColor &&
+        other.baseBlurMillimeters == baseBlurMillimeters &&
+        other.stretchEdges == stretchEdges;
   }
 
   @override
@@ -122,9 +197,15 @@ class DuoFoldParameters {
         pixelsPerMillimeter,
         blurSpread,
         darkening,
+        surroundColor,
+        hazeColor,
+        baseBlurMillimeters,
+        stretchEdges,
       );
 
   @override
   String toString() => 'DuoFoldParameters(eye: ${eyeDistanceMillimeters}mm, '
-      'pxPerMm: $pixelsPerMillimeter, blur: $blurSpread, darken: $darkening)';
+      'pxPerMm: $pixelsPerMillimeter, blur: $blurSpread, darken: $darkening, '
+      'surround: $surroundColor, haze: $hazeColor, '
+      'baseBlur: ${baseBlurMillimeters}mm, stretchEdges: $stretchEdges)';
 }

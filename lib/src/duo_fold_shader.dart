@@ -14,8 +14,10 @@ abstract final class DuoFoldShader {
   /// The engine owns float uniforms 0 and 1, the filter input size.
   static const int firstCustomFloatIndex = 2;
 
-  /// Number of floats `DuoFoldParameters.packUniforms` produces.
-  static const int customFloatCount = 6;
+  /// Number of floats `DuoFoldParameters.packUniforms` produces. The surround
+  /// and haze colours are three scalar uniforms each, never a `vec3`: see
+  /// `DuoFoldParameters.packUniforms` for why that matters.
+  static const int customFloatCount = 14;
 
   static Future<ui.FragmentProgram>? _program;
 
