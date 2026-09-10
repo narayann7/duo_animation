@@ -56,8 +56,49 @@ void main() {
       expect(uniforms[9], 0); // haze defaults to black, a pure absorber
       expect(uniforms[10], 0);
       expect(uniforms[11], 0);
-      expect(uniforms[12], 0); // no base blur unless one is asked for
+      // Base blur defaults to 0.10 mm, packed in pixels at the density given.
+      expect(uniforms[12], closeTo(0.6, 1e-9));
       expect(uniforms[13], 1); // edges stretch by default
+    });
+
+    test('a tilt response above one holds the small tilts back', () {
+      const linear = DuoFoldParameters();
+      const eased = DuoFoldParameters(tiltResponse: 2);
+
+      double packedTilt(DuoFoldParameters params, double tilt) =>
+          params.packUniforms(
+            tiltDegrees: tilt,
+            liftDirX: -1,
+            liftDirY: 0,
+            pixelsPerMillimeter: 6,
+          )[0];
+
+      // Half of the widest tilt spends half the fold when linear, a quarter of
+      // it when squared.
+      expect(packedTilt(linear, 22.5), closeTo(22.5, 1e-9));
+      expect(packedTilt(eased, 22.5), closeTo(11.25, 1e-9));
+
+      // The endpoints do not move, which is what keeps the widest tilt looking
+      // the same as it did before the curve was applied.
+      expect(packedTilt(eased, 0), 0);
+      expect(packedTilt(eased, DuoFoldParameters.maxTiltDegrees),
+          closeTo(DuoFoldParameters.maxTiltDegrees, 1e-9));
+    });
+
+    test('a nonsensical tilt response falls back to linear', () {
+      for (final response in <double>[0, -2, double.nan, double.infinity]) {
+        final params = DuoFoldParameters(tiltResponse: response);
+        expect(
+          params.packUniforms(
+            tiltDegrees: 20,
+            liftDirX: -1,
+            liftDirY: 0,
+            pixelsPerMillimeter: 6,
+          )[0],
+          closeTo(20, 1e-9),
+          reason: 'response $response should behave as linear',
+        );
+      }
     });
 
     test('sends the edge mode as a flag the shader can branch on', () {

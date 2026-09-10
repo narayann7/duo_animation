@@ -11,11 +11,12 @@ class DuoFoldParameters {
     this.eyeDistanceMillimeters = 450,
     this.pixelsPerMillimeter = 0,
     this.blurSpread = 0.12,
-    this.darkening = 0.015,
+    this.darkening = 0.0084,
     this.surroundColor = const ui.Color(0xFF000000),
     this.hazeColor = const ui.Color(0xFF000000),
-    this.baseBlurMillimeters = 0,
+    this.baseBlurMillimeters = 0.10,
     this.stretchEdges = true,
+    this.tiltResponse = 1,
   });
 
   /// Distance from the viewer's eyes to the untilted screen, looking head-on.
@@ -41,8 +42,8 @@ class DuoFoldParameters {
   /// which leaves the hinge side of the screen perfectly sharp. That is what
   /// the optics say happens, since the glass touches the content there, but a
   /// pane of frosted glass is frosted across its whole face. This adds that
-  /// even frost. Zero, the default, leaves the pure model alone. It is
-  /// specified in millimetres so it holds its size across displays.
+  /// even frost. Zero leaves the pure model alone. It is specified in
+  /// millimetres so it holds its size across displays.
   final double baseBlurMillimeters;
 
   /// Fraction of light lost per pixel of blur radius. Frostier glass reads
@@ -51,6 +52,22 @@ class DuoFoldParameters {
   /// Authored against [referencePixelsPerMillimeter]; [packUniforms] rescales it
   /// for the real display so the look holds on any screen.
   final double darkening;
+
+  /// How tilt maps onto the fold, as an exponent.
+  ///
+  /// One, the default, is linear: half the tilt gives half the fold. Higher
+  /// values hold the small tilts back while leaving the widest tilt exactly
+  /// where it was, so the effect starts gently and arrives late instead of
+  /// spending itself in the first few degrees. Two is a good starting point.
+  ///
+  /// This matters most on a large display. The fold's reach is set by the pixel
+  /// distance from the hinge to the far edge, so the same few degrees open a
+  /// much wider gap on a tablet than on a phone, and a linear response there
+  /// covers the screen almost at once.
+  ///
+  /// Values below one do the opposite, front-loading the response. Anything at
+  /// or below zero is ignored and treated as linear.
+  final double tiltResponse;
 
   /// Whether content is sampled clamped to its own edge.
   ///
@@ -135,9 +152,10 @@ class DuoFoldParameters {
   }) {
     final clampedTilt =
         tiltDegrees.clamp(-maxTiltDegrees, maxTiltDegrees).toDouble();
+    final shapedTilt = _shape(clampedTilt.abs());
     final density = math.max(pixelsPerMillimeter, 1e-6);
     return <double>[
-      clampedTilt.abs(),
+      shapedTilt,
       liftDirX,
       liftDirY,
       eyeDistanceMillimeters * density,
@@ -154,6 +172,17 @@ class DuoFoldParameters {
     ];
   }
 
+  /// Applies [tiltResponse] to a tilt magnitude, holding the endpoints fixed:
+  /// rest stays rest and [maxTiltDegrees] stays [maxTiltDegrees], with only the
+  /// path between them curved.
+  double _shape(double magnitude) {
+    if (tiltResponse == 1 || tiltResponse <= 0 || !tiltResponse.isFinite) {
+      return magnitude;
+    }
+    final fraction = magnitude / maxTiltDegrees;
+    return math.pow(fraction, tiltResponse).toDouble() * maxTiltDegrees;
+  }
+
   /// Returns a copy with the given fields replaced.
   DuoFoldParameters copyWith({
     double? eyeDistanceMillimeters,
@@ -164,6 +193,7 @@ class DuoFoldParameters {
     ui.Color? hazeColor,
     double? baseBlurMillimeters,
     bool? stretchEdges,
+    double? tiltResponse,
   }) {
     return DuoFoldParameters(
       eyeDistanceMillimeters:
@@ -175,6 +205,7 @@ class DuoFoldParameters {
       hazeColor: hazeColor ?? this.hazeColor,
       baseBlurMillimeters: baseBlurMillimeters ?? this.baseBlurMillimeters,
       stretchEdges: stretchEdges ?? this.stretchEdges,
+      tiltResponse: tiltResponse ?? this.tiltResponse,
     );
   }
 
@@ -188,7 +219,8 @@ class DuoFoldParameters {
         other.surroundColor == surroundColor &&
         other.hazeColor == hazeColor &&
         other.baseBlurMillimeters == baseBlurMillimeters &&
-        other.stretchEdges == stretchEdges;
+        other.stretchEdges == stretchEdges &&
+        other.tiltResponse == tiltResponse;
   }
 
   @override
@@ -201,6 +233,7 @@ class DuoFoldParameters {
         hazeColor,
         baseBlurMillimeters,
         stretchEdges,
+        tiltResponse,
       );
 
   @override
