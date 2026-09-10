@@ -17,18 +17,9 @@ class DuoFoldDisplayMetrics {
 
   /// Whether a usable gyro-backed orientation sensor exists.
   ///
-  /// False on emulators, which is why the example app needs a manual mode.
+  /// False on emulators, which is why the controller falls back to manual
+  /// mode rather than showing a dead effect.
   final bool hasRotationSensor;
-
-  /// Decodes the map the `metrics` platform call returns.
-  factory DuoFoldDisplayMetrics.fromMap(Map<Object?, Object?> map) {
-    final density = map['pixelsPerMillimeter'];
-    final sensor = map['hasRotationSensor'];
-    return DuoFoldDisplayMetrics(
-      pixelsPerMillimeter: density is num ? density.toDouble() : 0,
-      hasRotationSensor: sensor is bool ? sensor : false,
-    );
-  }
 
   @override
   String toString() =>

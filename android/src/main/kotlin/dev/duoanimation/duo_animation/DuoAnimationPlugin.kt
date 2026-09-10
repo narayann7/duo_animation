@@ -9,9 +9,6 @@ import android.os.Build
 import android.view.Surface
 import android.view.WindowManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
 import kotlin.math.sqrt
 
 /**
@@ -24,29 +21,27 @@ import kotlin.math.sqrt
  * game sensor.
  *
  * The plugin deliberately does no filtering. It reduces each reading to screen
- * axes, projects the gyro onto the screen's up and right axes, and hands 14
- * doubles to Dart, where calibration, prediction and washout live.
+ * axes, projects the gyro onto the screen's up and right axes, and publishes a
+ * MotionFrame to Dart, where calibration, prediction and washout live. The
+ * schema at pigeons/motion.dart owns that contract; this file only fills it in.
  */
 class DuoAnimationPlugin :
     FlutterPlugin,
-    MethodChannel.MethodCallHandler,
-    EventChannel.StreamHandler,
+    DuoMotionHostApi,
     SensorEventListener {
 
     private lateinit var context: Context
-    private lateinit var methodChannel: MethodChannel
-    private lateinit var eventChannel: EventChannel
     private var sensorManager: SensorManager? = null
 
     private var rotationSensor: Sensor? = null
     private var gyroSensor: Sensor? = null
-    private var eventSink: EventChannel.EventSink? = null
+    private var eventSink: PigeonEventSink<MotionFrame>? = null
+    private var streamHandler: MotionStreamHandler? = null
 
     private val rawMatrix = FloatArray(9)
     private val screenMatrix = FloatArray(9)
     private val gyroRate = FloatArray(3)
     private var hasGyroSample = false
-    private val payload = DoubleArray(PAYLOAD_LENGTH)
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
@@ -55,37 +50,62 @@ class DuoAnimationPlugin :
             ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
-        methodChannel = MethodChannel(binding.binaryMessenger, METHOD_CHANNEL)
-        methodChannel.setMethodCallHandler(this)
-        eventChannel = EventChannel(binding.binaryMessenger, EVENT_CHANNEL)
-        eventChannel.setStreamHandler(this)
+        DuoMotionHostApi.setUp(binding.binaryMessenger, this)
+        val handler = MotionStreamHandler(this)
+        streamHandler = handler
+        StreamMotionStreamHandler.register(binding.binaryMessenger, handler)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         stopListening()
-        methodChannel.setMethodCallHandler(null)
-        eventChannel.setStreamHandler(null)
+        DuoMotionHostApi.setUp(binding.binaryMessenger, null)
+        // The generated register() takes a non-null handler and offers no undo, so
+        // the event channel keeps this handler after detach. Dropping the plugin
+        // reference is what stops that stale handler from pinning the plugin, and
+        // with it the application context, for the life of the process.
+        streamHandler?.detach()
+        streamHandler = null
         sensorManager = null
     }
 
-    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        when (call.method) {
-            "metrics" -> result.success(
-                mapOf(
-                    "pixelsPerMillimeter" to pixelsPerMillimeter(),
-                    "hasRotationSensor" to (rotationSensor != null)
-                )
-            )
-            "stop" -> {
-                stopListening()
-                result.success(null)
-            }
-            else -> result.notImplemented()
+    override fun metrics(): MotionMetrics = MotionMetrics(
+        pixelsPerMillimeter = pixelsPerMillimeter(),
+        hasRotationSensor = rotationSensor != null
+    )
+
+    override fun stop() {
+        stopListening()
+    }
+
+    /**
+     * Registers sensor listeners while Dart is subscribed. The plugin itself
+     * receives the sensor callbacks, so this only starts and stops them and
+     * holds the sink to publish through.
+     *
+     * Deliberately not an inner class. The event channel outlives detach, so a
+     * handler with an implicit reference to the plugin would keep it alive; this
+     * one can be emptied with [detach].
+     */
+    private class MotionStreamHandler(
+        private var plugin: DuoAnimationPlugin?
+    ) : StreamMotionStreamHandler() {
+
+        /** Drops the plugin reference once the engine is gone. */
+        fun detach() {
+            plugin = null
+        }
+
+        override fun onListen(p0: Any?, sink: PigeonEventSink<MotionFrame>) {
+            plugin?.startListening(sink)
+        }
+
+        override fun onCancel(p0: Any?) {
+            plugin?.stopListening()
         }
     }
 
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-        eventSink = events
+    private fun startListening(sink: PigeonEventSink<MotionFrame>) {
+        eventSink = sink
         val manager = sensorManager ?: return
         rotationSensor?.let {
             manager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
@@ -93,10 +113,6 @@ class DuoAnimationPlugin :
         gyroSensor?.let {
             manager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
-    }
-
-    override fun onCancel(arguments: Any?) {
-        stopListening()
     }
 
     private fun stopListening() {
@@ -119,39 +135,41 @@ class DuoAnimationPlugin :
                 val (axisX, axisY) = screenRemapAxes()
                 SensorManager.remapCoordinateSystem(rawMatrix, axisX, axisY, screenMatrix)
 
-                for (i in 0 until 9) {
-                    payload[i] = screenMatrix[i].toDouble()
-                }
+                val matrix = DoubleArray(9) { screenMatrix[it].toDouble() }
 
                 val screenUp = screenUpInDeviceCoords()
-                payload[9] = if (hasGyroSample) {
-                    (gyroRate[0] * screenUp[0] +
-                        gyroRate[1] * screenUp[1] +
-                        gyroRate[2] * screenUp[2]).toDouble()
-                } else {
-                    0.0
-                }
                 val screenRight = screenRightInDeviceCoords()
-                payload[10] = if (hasGyroSample) {
-                    (gyroRate[0] * screenRight[0] +
-                        gyroRate[1] * screenRight[1] +
-                        gyroRate[2] * screenRight[2]).toDouble()
-                } else {
-                    0.0
-                }
-                payload[11] = if (hasGyroSample) {
-                    sqrt(
-                        gyroRate[0] * gyroRate[0] +
-                            gyroRate[1] * gyroRate[1] +
-                            gyroRate[2] * gyroRate[2]
-                    ).toDouble()
-                } else {
-                    0.0
-                }
-                payload[12] = if (hasGyroSample) 1.0 else 0.0
-                payload[13] = event.timestamp / 1_000_000_000.0
 
-                sink.success(payload.copyOf())
+                sink.success(
+                    MotionFrame(
+                        screenMatrix = matrix,
+                        omegaScreenY = if (hasGyroSample) {
+                            (gyroRate[0] * screenUp[0] +
+                                gyroRate[1] * screenUp[1] +
+                                gyroRate[2] * screenUp[2]).toDouble()
+                        } else {
+                            0.0
+                        },
+                        omegaScreenX = if (hasGyroSample) {
+                            (gyroRate[0] * screenRight[0] +
+                                gyroRate[1] * screenRight[1] +
+                                gyroRate[2] * screenRight[2]).toDouble()
+                        } else {
+                            0.0
+                        },
+                        omegaMagnitude = if (hasGyroSample) {
+                            sqrt(
+                                gyroRate[0] * gyroRate[0] +
+                                    gyroRate[1] * gyroRate[1] +
+                                    gyroRate[2] * gyroRate[2]
+                            ).toDouble()
+                        } else {
+                            0.0
+                        },
+                        hasGyro = hasGyroSample,
+                        timestampSeconds = event.timestamp / 1_000_000_000.0
+                    )
+                )
             }
         }
     }
@@ -212,11 +230,5 @@ class DuoAnimationPlugin :
     private fun pixelsPerMillimeter(): Double {
         val xdpi = context.resources.displayMetrics.xdpi
         return if (xdpi.isFinite() && xdpi > 0f) (xdpi / 25.4f).toDouble() else 0.0
-    }
-
-    private companion object {
-        const val METHOD_CHANNEL = "dev.duoanimation/duo_animation"
-        const val EVENT_CHANNEL = "dev.duoanimation/duo_animation/motion"
-        const val PAYLOAD_LENGTH = 14
     }
 }

@@ -282,33 +282,4 @@ void main() {
       expect(negative.liftDirX, closeTo(1, 0.01));
     });
   });
-
-  group('MotionSample.fromPayload', () {
-    test('decodes the 14-double wire format', () {
-      final payload = <double>[
-        1, 0, 0, 0, 1, 0, 0, 0, 1, // matrix
-        0.5, // omegaScreenY
-        0.4, // omegaScreenX
-        0.9, // omegaMagnitude
-        1, // hasGyro
-        12.25, // timestampSeconds
-      ];
-
-      final sample = MotionSample.fromPayload(payload);
-
-      expect(sample.screenMatrix, Matrix3.identity);
-      expect(sample.omegaScreenY, 0.5);
-      expect(sample.omegaScreenX, 0.4);
-      expect(sample.omegaMagnitude, 0.9);
-      expect(sample.hasGyro, isTrue);
-      expect(sample.timestampSeconds, 12.25);
-    });
-
-    test('rejects a payload of the wrong length', () {
-      expect(
-        () => MotionSample.fromPayload(<double>[1, 2, 3]),
-        throwsA(isA<FormatException>()),
-      );
-    });
-  });
 }

@@ -3,43 +3,33 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'motion_api.g.dart';
 import 'motion_source.dart';
 
 /// Talks to the Kotlin and Swift halves of the plugin.
 ///
-/// The native side does exactly two things: reduce the platform's orientation
-/// reading to screen axes, and project the gyro onto the screen's up axis. All
-/// filtering happens in Dart, so the two native implementations stay small
-/// enough to eyeball for correctness.
+/// The wire format is generated from `pigeons/motion.dart`, so the three
+/// languages cannot disagree about field order or container type without
+/// failing to compile. This class exists to keep the generated types from
+/// leaking outward: it maps the generated frame onto [MotionSample] and
+/// implements the same [DuoMotionSource] contract the rest of the package
+/// already talks to.
 class ChannelMotionSource implements DuoMotionSource {
-  /// Creates a source. The channel arguments exist for tests.
-  ChannelMotionSource({
-    MethodChannel? methodChannel,
-    EventChannel? eventChannel,
-  }) : _methods = methodChannel ?? const MethodChannel(methodChannelName),
-       _events = eventChannel ?? const EventChannel(eventChannelName);
+  /// Creates a source. The [api] argument exists for tests.
+  ChannelMotionSource({DuoMotionHostApi? api})
+    : _api = api ?? DuoMotionHostApi();
 
-  /// Name of the request and response channel.
-  static const String methodChannelName = 'dev.duoanimation/duo_animation';
-
-  /// Name of the sample stream channel.
-  static const String eventChannelName =
-      'dev.duoanimation/duo_animation/motion';
-
-  final MethodChannel _methods;
-  final EventChannel _events;
+  final DuoMotionHostApi _api;
   Stream<MotionSample>? _samples;
 
   @override
   Future<DuoFoldDisplayMetrics> readMetrics() async {
     try {
-      final result = await _methods.invokeMapMethod<Object?, Object?>(
-        'metrics',
+      final metrics = await _api.metrics();
+      return DuoFoldDisplayMetrics(
+        pixelsPerMillimeter: metrics.pixelsPerMillimeter,
+        hasRotationSensor: metrics.hasRotationSensor,
       );
-      if (result == null) {
-        return DuoFoldDisplayMetrics.unknown;
-      }
-      return DuoFoldDisplayMetrics.fromMap(result);
     } on PlatformException catch (error) {
       debugPrint('duo_animation: metrics call failed: ${error.code}');
       return DuoFoldDisplayMetrics.unknown;
@@ -51,35 +41,40 @@ class ChannelMotionSource implements DuoMotionSource {
 
   @override
   Stream<MotionSample> get samples {
-    return _samples ??= _events
-        .receiveBroadcastStream()
-        .map(_decode)
-        .where((sample) => sample != null)
-        .cast<MotionSample>();
+    // streamMotion opens a new channel on every call, so it is called once
+    // and the broadcast stream it returns is cached.
+    return _samples ??= streamMotion()
+        .handleError(_reportAndSwallow)
+        .map(_toSample);
   }
 
-  /// Returns null for a frame that does not parse, so one bad packet cannot
-  /// tear down the subscription for the rest of the session.
-  MotionSample? _decode(Object? event) {
-    if (event is! Float64List) {
-      debugPrint(
-        'duo_animation: unexpected motion frame type ${event.runtimeType}',
-      );
-      return null;
+  /// Keeps one bad frame from tearing down the subscription for the rest of
+  /// the session. The generated stream surfaces a native `sink.error` as a
+  /// stream error, and an unhandled stream error cancels the subscription.
+  void _reportAndSwallow(Object error) {
+    if (error is PlatformException) {
+      debugPrint('duo_animation: motion stream error: ${error.code}');
+      return;
     }
-    try {
-      return MotionSample.fromPayload(event);
-    } on FormatException catch (error) {
-      debugPrint('duo_animation: ${error.message}');
-      return null;
-    }
+    debugPrint('duo_animation: motion stream error: $error');
+  }
+
+  MotionSample _toSample(MotionFrame frame) {
+    return MotionSample(
+      screenMatrix: frame.screenMatrix,
+      omegaScreenY: frame.omegaScreenY,
+      omegaScreenX: frame.omegaScreenX,
+      omegaMagnitude: frame.omegaMagnitude,
+      hasGyro: frame.hasGyro,
+      timestampSeconds: frame.timestampSeconds,
+    );
   }
 
   @override
   Future<void> dispose() async {
     _samples = null;
     try {
-      await _methods.invokeMethod<void>('stop');
+      await _api.stop();
     } on PlatformException catch (_) {
       // Nothing to do: the native side is already gone.
     } on MissingPluginException {

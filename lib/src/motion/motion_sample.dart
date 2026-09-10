@@ -1,4 +1,10 @@
 /// One orientation reading, already reduced to screen axes by the native side.
+///
+/// This is what a motion source hands the filter. It is deliberately
+/// plain Dart with no Flutter import, which is what lets the orientation
+/// filter be tested with no binding and no hardware. The wire format that
+/// carries a reading across from the native side is a separate concern and is
+/// defined by the schema at `pigeons/motion.dart`.
 class MotionSample {
   /// Creates a sample. [screenMatrix] must be a row-major 3x3.
   const MotionSample({
@@ -9,31 +15,6 @@ class MotionSample {
     required this.hasGyro,
     required this.timestampSeconds,
   });
-
-  /// Decodes the 14-double payload the platform channel delivers.
-  ///
-  /// Layout: nine matrix values row-major, then `omegaScreenY`,
-  /// `omegaScreenX`, `omegaMagnitude`, `hasGyro` as 1 or 0, and the timestamp
-  /// in seconds.
-  factory MotionSample.fromPayload(List<double> payload) {
-    if (payload.length != payloadLength) {
-      throw FormatException(
-        'duo_animation motion payload must hold $payloadLength doubles, '
-        'got ${payload.length}',
-      );
-    }
-    return MotionSample(
-      screenMatrix: payload.sublist(0, 9),
-      omegaScreenY: payload[9],
-      omegaScreenX: payload[10],
-      omegaMagnitude: payload[11],
-      hasGyro: payload[12] != 0,
-      timestampSeconds: payload[13],
-    );
-  }
-
-  /// Number of doubles in the wire format.
-  static const int payloadLength = 14;
 
   /// Current pose, columns being screen-right, screen-up and screen-normal.
   final List<double> screenMatrix;
