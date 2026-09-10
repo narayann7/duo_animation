@@ -5,13 +5,13 @@
 Pod::Spec.new do |s|
   s.name             = 'duo_animation'
   s.version          = '0.0.1'
-  s.summary          = 'A new Flutter plugin project.'
+  s.summary          = 'A tilt-driven frosted-glass fold effect for Flutter widgets.'
   s.description      = <<-DESC
-A new Flutter plugin project.
+A tilt-driven frosted-glass fold effect for Flutter widgets.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/narayann7/duo_animation'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'narayann7' => 'narayan.reddy@eatwithnymble.com' }
   s.source           = { :path => '.' }
   s.source_files = 'duo_animation/Sources/duo_animation/**/*'
   s.dependency 'Flutter'
